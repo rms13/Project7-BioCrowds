@@ -1,8 +1,9 @@
 const THREE = require('three'); // older modules are imported like this. You shouldn't have to worry about this much
 import Framework from './framework'
-import Turtle from './crowd.js'
+import Crowd from './crowd.js'
 
-var turtle;
+var crowd;
+var anim = false;
 
 // called after the scene loads
 function onLoad(framework) {
@@ -20,17 +21,22 @@ function onLoad(framework) {
   scene.add(directionalLight);
 
   // set camera position
-  camera.position.set(10, 10, 20);
-  camera.lookAt(new THREE.Vector3(0,0,0));
+  camera.position.set(25, 10, 25);
+  camera.lookAt(new THREE.Vector3(10,0,10));
 
   // initialize LSystem and a Turtle to draw
-  turtle = new Turtle(scene);
+  crowd = new Crowd(scene);
 
   gui.add(camera, 'fov', 0, 180).onChange(function(newVal) {
     camera.updateProjectionMatrix();
   });
+
   var update= new GUIoptions();
-  gui.add(update,'iterate').onclick;
+  gui.add(update,'Start').onclick;
+  gui.add(update,'Reset').onChange(function(newVal) {
+      clearScene(crowd);
+      crowd = new Crowd(scene);
+  });
   // gui.add(update, 'kaipan', 0, 12).step(1).onChange(function(newVal) {
   //
   // });
@@ -38,26 +44,30 @@ function onLoad(framework) {
 
 var GUIoptions = function()
 {
-	this.iterate=function(){
-    turtle.renderSymbols();
-		};
+	this.Start=function(){
+        anim = !anim;
+	};
+    this.Reset=function(){
+	};
 }
 
 // clears the scene by removing all geometries added by turtle.js
-function clearScene(turtle) {
+function clearScene(crowd) {
   var obj;
-  for( var i = turtle.scene.children.length - 1; i > 3; i--) {
-      obj = turtle.scene.children[i];
-      turtle.scene.remove(obj);
+  for( var i = crowd.scene.children.length - 1; i > 3; i--) {
+      obj = crowd.scene.children[i];
+      crowd.scene.remove(obj);
   }
 }
 
-function doLsystem(lsystem, iterations, turtle) {
-    turtle.renderSymbols(result);
-}
+// function doLsystem(lsystem, iterations, turtle) {
+//     turtle.renderSymbols(result);
+// }
 
 // called on frame updates
 function onUpdate(framework) {
+    if(anim)
+        crowd.moveAgents();
 }
 
 // when the scene is done initializing, it will call onLoad, then on frame updates, call onUpdate
