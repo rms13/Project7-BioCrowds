@@ -3,6 +3,7 @@ import Framework from './framework'
 import Crowd from './crowd.js'
 
 var crowd;
+var framectr = 0;
 var anim = false;
 
 // called after the scene loads
@@ -26,6 +27,7 @@ function onLoad(framework) {
 
   // initialize LSystem and a Turtle to draw
   crowd = new Crowd(scene);
+  framectr = 0;
 
   gui.add(camera, 'fov', 0, 180).onChange(function(newVal) {
     camera.updateProjectionMatrix();
@@ -67,7 +69,10 @@ function clearScene(crowd) {
 // called on frame updates
 function onUpdate(framework) {
     if(anim)
-        crowd.moveAgents();
+        crowd.moveAgents(framectr);
+    framectr++;
+    if(framectr>=60)
+        framectr=0;
 }
 
 // when the scene is done initializing, it will call onLoad, then on frame updates, call onUpdate

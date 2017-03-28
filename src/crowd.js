@@ -16,7 +16,7 @@ export function Agent()
 
 export function Marker()
 {
-	this.id = '';
+	this.id = 0;
 	this.position = new THREE.Vector3(0,0,0);
 	this.geometry = null;
 	this.active = false;
@@ -80,7 +80,7 @@ export default class Crowd
 
 		this.createTerrain();
 		this.generateMarkers();
-		this.generateAgents();
+		this.generateAgents(20);
 	};
 
 	createTerrain()
@@ -95,18 +95,25 @@ export default class Crowd
 
 	generateMarkers()
 	{
-		for(var i=0; i<20; i++)
+		var num = 50;
+		var geom = new THREE.Geometry();
+		this.materials = [];
+		for(var i=0; i<num; i++)
 		{
-			for(var j=0; j<20; j++)
+			for(var j=0; j<num; j++)
 			{
 				var m = new Marker();
-				var geometry = new THREE.SphereGeometry(0.05,8,8);
+				var geometry = new THREE.SphereGeometry(0.025,8,8);
 				var material = new THREE.MeshLambertMaterial( {color: 0xffffff} );
-		        var sphere = new THREE.Mesh(geometry, material);
-		        sphere.position.set(i+Math.random(),0,j+Math.random());
-		        this.scene.add(sphere);
+		        var sphere = new THREE.Mesh(geometry);
+		        sphere.position.set(i*20/num+Math.random(),0,j*20/num+Math.random());
+		    //    this.scene.add(sphere);
+				this.materials.push(material);
 
-				m.id = ''+i+j;
+				sphere.updateMatrix();
+				geom.mergeMesh(sphere);//.geometry, sphere.matrix, i*j);
+
+				m.id = i*j;
 				m.position.set(sphere.position.x,sphere.position.y,sphere.position.z);
 				m.geometry = sphere;
 
@@ -116,42 +123,34 @@ export default class Crowd
 				z = Math.min(Math.max(0, z), 9); // CLAMP
 
 				this.cells[x][z].markers.push(m);
-				// if(x>0 && z>0)
-				// {
-				// 	this.cells[x-1][z-1].markers.push(m);
-				// }
-				// if(x>0)
-				// {
-				// 	this.cells[x-1][z].markers.push(m);
-				// }
-				// if(z>0)
-				// {
-				// 	this.cells[x][z-1].markers.push(m);
-				// }
 
 				this.markers.push(m);
-				//console.log(m.object);
 			}
 		}
+
+		 var materialList = new THREE.MeshFaceMaterial(this.materials);
+		 var mesh = new THREE.Mesh( geom, materialList );
+		 this.scene.add( mesh );
 		//console.log(this.cells);
 	};
 
-	generateAgents()
+	generateAgents(numAgents)
 	{
-		var numAgents = 20;
+		//var numAgents = 20;
 		for(var i=0; i<numAgents; i++)
 		{
 			var a = new Agent();
-			var geometry = new THREE.CylinderGeometry(0.25,0.25,1);
+			var geometry = new THREE.CylinderGeometry(0.05,0.1,1);
 			var material = new THREE.MeshLambertMaterial( {color: Math.random() * 0xffffff} );
 			//material.color.setHex( Math.random() * 0xffffff );
 
 			var cylinder = new THREE.Mesh(geometry, material);
-			cylinder.position.set(i*20/numAgents+Math.random(),0,Math.random());
+			cylinder.position.set(i*19/numAgents+Math.random(),0,0.5+Math.random());
 			this.scene.add(cylinder);
 
 			// GOAL FOR DEBUGGING
-			a.goal = new THREE.Vector3(i*20/numAgents*Math.random(),0,19);
+			var g = Math.floor(Math.random() * 18 + 1);//20-i*20/numAgents
+			a.goal = new THREE.Vector3(g,0,19);
 			var geom = new THREE.SphereGeometry(0.1,8,8);
 			var sphere = new THREE.Mesh(geom, material);
 			sphere.position.set(a.goal.x,a.goal.y,a.goal.z);
@@ -166,28 +165,37 @@ export default class Crowd
 
 			var x = Math.floor(a.position.x/2);
 			var z = Math.floor(a.position.z/2);
+			// x = Math.min(Math.max(0, x), 9); // CLAMP
+			// z = Math.min(Math.max(0, z), 9); // CLAMP
 
-			this.cells[x][z].agents.push(a);
-			if(x<9 && z<9)
+			if(x>=0 && x<=9 && z>=0 && z<=9)
+			{
+				this.cells[x][z].agents.push(a);
+			}
+			if(x+1>=0 && x+1<=9 && z+1>=0 && z+1<=9)
 			{
 				this.cells[x+1][z+1].agents.push(a);
 			}
-			if(x<9)
+			if(x+1>=0 && x+1<=9 && z>=0 && z<=9)
 			{
 				this.cells[x+1][z].agents.push(a);
 			}
-			if(z<9)
+			if(x>=0 && x<=9 && z+1>=0 && z+1<=9)
 			{
 				this.cells[x][z+1].agents.push(a);
 			}
+
 			//a.cell = this.cells[x][z];
 			this.agents.push(a);
 		}
 	};
 
-	moveAgents()
+	moveAgents(framectr)
 	{
-		//console.log('hi');
+		if(framectr===0)
+			this.generateAgents(20);
+	if(this.agents.length!==0)
+	{
 
 		var type = 2;
 		// GO STRAIGHT:
@@ -197,129 +205,165 @@ export default class Crowd
 			{
 				var a = this.agents[i];
 				var d = a.position.distanceTo(a.goal);
-				if(d>0.1)
+				if(d>0.01)
 				{
 					a.velocity.set(a.goal.x - a.position.x,
 									a.goal.y - a.position.y,
 									a.goal.z - a.position.z);
-
-					a.position.add(a.velocity.divideScalar(100));
+					a.velocity.clamp(THREE.Vector3(0,0,0),THREE.Vector3(1,1,1));
+					a.position.add(a.velocity.divideScalar(10));
 					a.geometry.position.copy(a.position);
 
 				}
 			}
 		}
 
-		else {
-		// USE MARKERS:
-		for(var i=0; i<this.markers.length; i++)
+		else
 		{
-			this.markers[i].agent = null;
-			this.markers[i].active = false;
-			this.markers[i].geometry.material.color.setHex(0xffffff);
-		}
-
-		for(var i=0; i<this.agents.length; i++)
-			this.agents[i].markers = [];
-
-		// FIND NEAREST AGENTS:
-		for(var i=0; i<this.cells.length; i++)
-		{
-			for(var j=0; j<this.cells[i].length; j++)
+			// USE MARKERS:
+			for(var i=0; i<this.markers.length; i++)
 			{
-				var c = this.cells[i][j];
-				if(c.agents.length===0) // only process markers if the cell has some agent..
-					continue;
+				this.markers[i].agent = null;
+				//this.markers[i].active = false;
+				this.markers[i].geometry.material.color.setHex(0xffffff);
+			}
 
-				// COMPARE ALL THE MARKERS TO ALL THE AGENTS IN THE CELLS
-				for(var k=0; k<c.markers.length; k++)
+			for(var i=0; i<this.agents.length; i++)
+				this.agents[i].markers = [];
+
+			// FIND NEAREST AGENTS:
+			for(var i=0; i<this.cells.length; i++)
+			{
+				for(var j=0; j<this.cells[i].length; j++)
 				{
-					c.markers[k].active=true;
-					var m = c.markers[k];
-					var a;
-					var minD = 0;
-					// if(m.agent!==null)
-					// 	minD = m.position.distanceTo(m.agent.position);
-					for(var l=0; l<c.agents.length; l++)
+					var c = this.cells[i][j];
+					if(c.agents.length===0) // only process markers if the cell has some agent..
+						continue;
+
+					// COMPARE ALL THE MARKERS TO ALL THE AGENTS IN THE CELLS
+					for(var k=0; k<c.markers.length; k++)
 					{
-						a = c.agents[l];
-						var d = m.position.distanceTo(a.position);
-						if(l===0  || d<minD && d<0.01)
+					//	c.markers[k].active=true;
+
+						var m = c.markers[k];
+						var a;
+						var minD = 0;
+						// if(m.agent!==null)
+						// 	minD = m.position.distanceTo(m.agent.position);
+						for(var l=0; l<c.agents.length; l++)
 						{
-							minD = d;
-							m.agent = a;
+							a = c.agents[l];
+							if(a.position.distanceTo(a.goal)<0.001) // STOP AGENT ONCE AT THE GOAL
+							{
+								//delete(this.agents[i]);
+								continue;
+							}
+							var d = m.position.distanceTo(a.position);
+							if((l===0 || d<minD) && d<2)
+							{
+								minD = d;
+								m.agent = a;
+							}
 						}
-					}
-					if(a!==undefined)
-					{
-						a.markers.push(m);
-					//	m.geometry.material.color = a.geometry.material.color;
-						m.geometry.material.color.setHex(0x999999);
+
+						if(m.agent!==null)
+						{
+							m.agent.markers.push(m);
+							m.geometry.material.color.setHex(m.agent.geometry.material.color.getHex());
+						//	this.materials[m.id].color.setHex(a.geometry.material.color.getHex());
+							//m.geometry.material.color.setHex(0x999999);
+						}
+					//	debugger;
 					}
 				}
 			}
+
+			for(var i=0; i<this.cells.length; i++)
+			{
+				for(var j=0; j<this.cells[i].length; j++)
+				{
+					this.cells[i][j].agents = [];
+				}
+			}
+
+			// FIND THE NEW VELOCITY OF THE AGENTS
+			for(var i=0; i<this.agents.length; i++)
+			{
+				var a = this.agents[i];
+
+				if(a===undefined)
+					continue;
+
+				var n = a.markers.length;
+				// if(n===0)
+				// 	continue;
+
+				a.velocity = THREE.Vector3(0,0,0);
+				if(a.position.distanceTo(a.goal)<0.01) // STOP AGENT ONCE AT THE GOAL
+				{
+					//delete(this.agents[i]);
+					this.scene.remove(a.geometry);
+					this.agents.splice(i, 1);
+					continue;
+				}
+				//a.velocity = THREE.Vector3(0,0,0);
+
+			if(n!==0)
+			{
+				var dirAG = new THREE.Vector3(0,0,0);
+				dirAG.set(a.goal.x - a.position.x,
+						  a.goal.y - a.position.y,
+						  a.goal.z - a.position.z) // dir to get to the goal
+				dirAG = dirAG.normalize();
+
+				var vel = new THREE.Vector3(0,0,0);
+				for(var j=0; j<n; j++)
+				{
+					var m = a.markers[j];
+					var distAM = a.position.distanceTo(m.position); // agent to marker distance
+					var distW = (2 - distAM); // weight.. more dist => less weight
+					var dir = new THREE.Vector3(0,0,0);
+					dir.set(m.position.x - a.position.x,
+							m.position.y - a.position.y,
+							m.position.z - a.position.z);
+					dir = dir.normalize(); // compute the direction
+					dir.multiplyScalar(distW * (dir.dot(dirAG)) / n); // apply weight based on AM dist, AG dir, num M..
+					vel.add(dir); // add the the velocity
+				}
+
+				a.velocity = vel.divideScalar(10); // TIMESTEP
+				a.position.add(a.velocity);
+				a.geometry.position.copy(a.position);
+			}
+
+				var x = Math.floor((a.position.x)/2);
+				var z = Math.floor((a.position.z)/2);
+
+				// x = Math.min(Math.max(0, x), 9); // CLAMP
+				// z = Math.min(Math.max(0, z), 9); // CLAMP
+
+				if(x>=0 && x<=9 && z>=0 && z<=9)
+				{
+					this.cells[x][z].agents.push(a);
+				}
+				if(x+1>=0 && x+1<=9 && z+1>=0 && z+1<=9)
+				{
+					this.cells[x+1][z+1].agents.push(a);
+				}
+				if(x+1>=0 && x+1<=9 && z>=0 && z<=9)
+				{
+					this.cells[x+1][z].agents.push(a);
+				}
+				if(x>=0 && x<=9 && z+1>=0 && z+1<=9)
+				{
+					this.cells[x][z+1].agents.push(a);
+				}
+			}
+
 		}
-
-		for(var i=0; i<this.cells.length; i++)
-		{
-			for(var j=0; j<this.cells[i].length; j++)
-			{
-				this.cells[i][j].agents = [];
-			}
-		}
-
-		// FIND THE NEW VELOCITY OF THE AGENTS
-		for(var i=0; i<this.agents.length; i++)
-		{
-			a.velocity = THREE.Vector3(0,0,0);
-			var a = this.agents[i];
-			var n = a.markers.length;
-			var dirAG = new THREE.Vector3(0,0,0);
-			dirAG.set(a.goal.x - a.position.x,
-					  a.goal.y - a.position.y,
-					  a.goal.z - a.position.z) // dir to get to the goal
-			dirAG = dirAG.normalize();
-
-			var vel = new THREE.Vector3(0,0,0);
-			for(var j=0; j<n; j++)
-			{
-				var m = a.markers[j];
-				var distAM = a.position.distanceTo(m.position); // agent to marker distance
-				var distW = 6 - distAM; // weight.. more dist => less weight
-				var dir = new THREE.Vector3(0,0,0);
-				dir.set(m.position.x - a.position.x,
-						m.position.y - a.position.y,
-						m.position.z - a.position.z);
-				dir = dir.normalize(); // compute the direction
-				dir.multiplyScalar(distW * dir.dot(dirAG) / n); // apply weight based on AM dist, AG dir, num M..
-				vel.add(dir); // add the the velocity
-			}
-
-			a.velocity = vel.divideScalar(100); // TIMESTEP
-			a.position.add(a.velocity);
-			a.geometry.position.copy(a.position);
-
-			var x = Math.floor(a.position.x/2);
-			var z = Math.floor(a.position.z/2);
-
-			this.cells[x][z].agents.push(a);
-			if(x<9 && z<9)
-			{
-				this.cells[x+1][z+1].agents.push(a);
-			}
-			if(x<9)
-			{
-				this.cells[x+1][z].agents.push(a);
-			}
-			if(z<9)
-			{
-				this.cells[x][z+1].agents.push(a);
-			}
-		}
-
-
-		}
+	}
 	};
+
 
   // A function to help you debug your turtle functions
   // by printing out the turtle's current state.
