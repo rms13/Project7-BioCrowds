@@ -58,7 +58,7 @@ export default class Crowd
 	createTerrain()
 	{
 		var geometry1 = new THREE.PlaneGeometry(20,20,100);
-		var material1 = new THREE.MeshLambertMaterial( {color: 0x5386ba, side: THREE.DoubleSide} );
+		var material1 = new THREE.MeshPhongMaterial( {color: 0xdb6f23, side: THREE.DoubleSide} );
 		var plane1 = new THREE.Mesh( geometry1, material1 );
 		plane1.position.set(10,0,10);
 		plane1.rotateX(90*3.14/180);
