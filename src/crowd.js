@@ -3,84 +3,56 @@ const OBJLoader = require('three-obj-loader')(THREE)
 
 export function Agent()
 {
-	this.id = -1;
 	this.position = new THREE.Vector3(0,0,0);
 	this.velocity = new THREE.Vector3(0,0,0);
 	this.goal = new THREE.Vector3(0,0,0);
-	this.orientation = new THREE.Vector3(0,0,0);
 	this.geometry = null;
-	//this.cell = null;
-	//this.size = new THREE.Vector3(0,0,0);
 	this.markers = []; // marker id??
 }
 
 export function Marker()
 {
-	this.id = 0;
 	this.position = new THREE.Vector3(0,0,0);
 	this.geometry = null;
-	this.active = false;
 	this.agent = -1;
 }
 
 export function Cell()
 {
-	this.minx = -1;
-	this.maxx = -1;
-	this.miny = -1;
-	this.maxy = -1;
-//	this.position = new THREE.Vector3(0,0,0);
 	this.markers = [];
 	this.agents = [];
 }
 
 var Material1 = new THREE.MeshLambertMaterial( {color: 0xf7f7e6} ); //whitish lambert
-/* // materials, textures and objloaders:
-var Material1 = new THREE.MeshLambertMaterial( {color: 0xf7f7e6} ); //whitish lambert
-var Material2 = new THREE.MeshPhongMaterial( {color: 0x131315} ); //metal
-var Material3 = new THREE.MeshLambertMaterial( {color: 0xc45e61} ); //metal
-//var texture = THREE.ImageUtils.loadTexture('crate.gif');
-var Material4;// = new THREE.MeshBasicMaterial({map: texture});
-var loader = new THREE.TextureLoader();
-loader.load('models/tex3.jpg', function ( texture ) {
-	texture.wrapS = THREE.RepeatWrapping;
-	texture.wrapT = THREE.RepeatWrapping;
-	texture.repeat.x = 2;
-	texture.repeat.y = 2;
-  Material4 = new THREE.MeshPhongMaterial({map: texture, overdraw: 0.5});
-});
-var objLoader = new THREE.OBJLoader();
-// var leafOBJ;
-// objLoader.load('models/leaf.obj', function(obj) {
-//   leafOBJ = obj.children[0].geometry;
-// });
-*/
 
 export default class Crowd
 {
-	constructor(scene)
+	constructor(scene,sceneSelect,visualDebug,numMarkers)
   	{
 		this.scene = scene;
 		this.markers = [];
 		this.agents = [];
 
 		this.cells = [];
-		for(var i=0; i<10; i++)
+		for(var i=0; i<20; i++)
 		{
 			var cellrow = [];
-			for(var j=0; j<10; j++)
+			for(var j=0; j<20; j++)
 			{
 				var cell = new Cell();
-				cell.minx = i*2; cell.miny = j*2;
-				cell.maxx = i*2 + 2; cell.maxy = j*2 + 2;
+				// cell.minx = i*2; cell.miny = j*2;
+				// cell.maxx = i*2 + 2; cell.maxy = j*2 + 2;
 				cellrow.push(cell);
 			}
 			this.cells.push(cellrow);
 		}
 
 		this.createTerrain();
-		this.generateMarkers();
-		this.generateAgents(20);
+		this.generateMarkers(visualDebug,numMarkers);
+		if(sceneSelect === 0)
+			this.generateAgents(20);
+		else if(sceneSelect === 1)
+			this.generateAgentsScene2(20);
 	};
 
 	createTerrain()
@@ -93,9 +65,9 @@ export default class Crowd
 		this.scene.add( plane1 );
 	};
 
-	generateMarkers()
+	generateMarkers(visualDebug,numMarkers)
 	{
-		var num = 50;
+		var num = numMarkers;
 		var geom = new THREE.Geometry();
 		this.materials = [];
 		for(var i=0; i<num; i++)
@@ -103,24 +75,28 @@ export default class Crowd
 			for(var j=0; j<num; j++)
 			{
 				var m = new Marker();
-				var geometry = new THREE.SphereGeometry(0.025,8,8);
+				var geometry = new THREE.SphereGeometry(0.05,8,8);
+			//	var material = new THREE.MeshLambertMaterial( {color: 0xffffff} );
 				var material = new THREE.MeshLambertMaterial( {color: 0xffffff} );
-		        var sphere = new THREE.Mesh(geometry);
+		        var sphere = new THREE.Mesh(geometry,material);
 		        sphere.position.set(i*20/num+Math.random(),0,j*20/num+Math.random());
-		    //    this.scene.add(sphere);
+
+				if(visualDebug===true)
+		        	this.scene.add(sphere);
+
 				this.materials.push(material);
 
-				sphere.updateMatrix();
-				geom.mergeMesh(sphere);//.geometry, sphere.matrix, i*j);
+				// sphere.updateMatrix();
+				// geom.mergeMesh(sphere);//.geometry, sphere.matrix, i*j);
 
-				m.id = i*j;
+				//m.id = i*j;
 				m.position.set(sphere.position.x,sphere.position.y,sphere.position.z);
 				m.geometry = sphere;
 
-				var x = Math.round(m.position.x/2);
-				var z = Math.round(m.position.z/2);
-				x = Math.min(Math.max(0, x), 9); // CLAMP
-				z = Math.min(Math.max(0, z), 9); // CLAMP
+				var x = Math.round(m.position.x);
+				var z = Math.round(m.position.z);
+				x = Math.min(Math.max(0, x), 19); // CLAMP
+				z = Math.min(Math.max(0, z), 19); // CLAMP
 
 				this.cells[x][z].markers.push(m);
 
@@ -128,9 +104,9 @@ export default class Crowd
 			}
 		}
 
-		 var materialList = new THREE.MeshFaceMaterial(this.materials);
-		 var mesh = new THREE.Mesh( geom, materialList );
-		 this.scene.add( mesh );
+		//  var materialList = new THREE.MeshFaceMaterial(this.materials);
+		//  var mesh = new THREE.Mesh( geom, materialList );
+		//  this.scene.add( mesh );
 		//console.log(this.cells);
 	};
 
@@ -145,7 +121,7 @@ export default class Crowd
 			//material.color.setHex( Math.random() * 0xffffff );
 
 			var cylinder = new THREE.Mesh(geometry, material);
-			cylinder.position.set(i*19/numAgents+Math.random(),0,0.5+Math.random());
+			cylinder.position.set(i*18/numAgents+Math.random(),0,0.5);
 			this.scene.add(cylinder);
 
 			// GOAL FOR DEBUGGING
@@ -156,44 +132,86 @@ export default class Crowd
 			sphere.position.set(a.goal.x,a.goal.y,a.goal.z);
 			this.scene.add(sphere);
 
-			a.id = ''+i;
 			a.position = new THREE.Vector3(cylinder.position.x,cylinder.position.y,cylinder.position.z);
 			a.velocity = new THREE.Vector3(0,0,0);
-
-			a.orientation = new THREE.Vector3(0,0,0);
 			a.geometry = cylinder;
 
-			var x = Math.floor(a.position.x/2);
-			var z = Math.floor(a.position.z/2);
-			// x = Math.min(Math.max(0, x), 9); // CLAMP
-			// z = Math.min(Math.max(0, z), 9); // CLAMP
+			var x = Math.round(a.position.x);
+			var z = Math.round(a.position.z);
+			x = Math.min(Math.max(0, x), 19); // CLAMP
+			z = Math.min(Math.max(0, z), 19); // CLAMP
 
-			if(x>=0 && x<=9 && z>=0 && z<=9)
+			for(var j=x-1; j<x+2; j++)
 			{
-				this.cells[x][z].agents.push(a);
+				for(var k=z-1; k<z+2; k++)
+				{
+					if(j>=0 &&k>=0 &&j<20 &&j<20)
+					{
+						this.cells[j][k].agents.push(a);
+					}
+				}
 			}
-			if(x+1>=0 && x+1<=9 && z+1>=0 && z+1<=9)
-			{
-				this.cells[x+1][z+1].agents.push(a);
-			}
-			if(x+1>=0 && x+1<=9 && z>=0 && z<=9)
-			{
-				this.cells[x+1][z].agents.push(a);
-			}
-			if(x>=0 && x<=9 && z+1>=0 && z+1<=9)
-			{
-				this.cells[x][z+1].agents.push(a);
-			}
-
-			//a.cell = this.cells[x][z];
 			this.agents.push(a);
 		}
 	};
 
-	moveAgents(framectr)
+	generateAgentsScene2(numAgents)
 	{
-		if(framectr===0)
-			this.generateAgents(20);
+		for(var i=0; i<numAgents; i++)
+		{
+			var a = new Agent();
+			var geometry = new THREE.CylinderGeometry(0.05,0.1,1);
+			var material = new THREE.MeshLambertMaterial( {color: Math.random() * 0xffffff} );
+			//material.color.setHex( Math.random() * 0xffffff );
+
+			var cylinder = new THREE.Mesh(geometry, material);
+
+
+			var r = 8;
+			var px = r*Math.cos((i)*4.44288293816);//*360*3.14/180/numAgents);
+			var pz = r*Math.sin((i)*4.44288293816);
+			// px = Math.min(Math.max(0, px), 19); // CLAMP
+			// pz = Math.min(Math.max(0, pz), 19); // CLAMP
+			cylinder.position.set(px+10, 0, pz+10);
+			this.scene.add(cylinder);
+
+			// GOAL FOR DEBUGGING
+			// var g = Math.floor(Math.random() * 18 + 1);//20-i*20/numAgents
+			a.goal = new THREE.Vector3(-px+11, 0, -pz+11);
+			var geom = new THREE.SphereGeometry(0.1, 8, 8);
+			var sphere = new THREE.Mesh(geom, material);
+			sphere.position.set(a.goal.x, 0, a.goal.z);
+			this.scene.add(sphere);
+
+			a.position = new THREE.Vector3(cylinder.position.x, cylinder.position.y, cylinder.position.z);
+			a.velocity = new THREE.Vector3(0,0,0);
+			a.geometry = cylinder;
+
+			var x = Math.round(a.position.x);
+			var z = Math.round(a.position.z);
+			x = Math.min(Math.max(0, x), 19); // CLAMP
+			z = Math.min(Math.max(0, z), 19); // CLAMP
+
+			for(var j=x-1; j<x+2; j++)
+			{
+				for(var k=z-1; k<z+2; k++)
+				{
+					if(j>=0 &&k>=0 &&j<20 &&j<20)
+					{
+						this.cells[j][k].agents.push(a);
+					}
+				}
+			}
+			this.agents.push(a);
+		}
+	}
+
+	moveAgents(framectr,num,speed,sceneSelect,visualDebug)
+	{
+		if(framectr===0 && sceneSelect===0)
+			this.generateAgents(num);
+		if(framectr===0 && sceneSelect===1)
+			this.generateAgentsScene2(num);
 	if(this.agents.length!==0)
 	{
 
@@ -224,7 +242,6 @@ export default class Crowd
 			for(var i=0; i<this.markers.length; i++)
 			{
 				this.markers[i].agent = null;
-				//this.markers[i].active = false;
 				this.markers[i].geometry.material.color.setHex(0xffffff);
 			}
 
@@ -243,23 +260,18 @@ export default class Crowd
 					// COMPARE ALL THE MARKERS TO ALL THE AGENTS IN THE CELLS
 					for(var k=0; k<c.markers.length; k++)
 					{
-					//	c.markers[k].active=true;
-
 						var m = c.markers[k];
 						var a;
 						var minD = 0;
-						// if(m.agent!==null)
-						// 	minD = m.position.distanceTo(m.agent.position);
 						for(var l=0; l<c.agents.length; l++)
 						{
 							a = c.agents[l];
-							if(a.position.distanceTo(a.goal)<0.001) // STOP AGENT ONCE AT THE GOAL
+							if(a.position.distanceTo(a.goal)<0.01) // STOP AGENT ONCE AT THE GOAL
 							{
-								//delete(this.agents[i]);
 								continue;
 							}
 							var d = m.position.distanceTo(a.position);
-							if((l===0 || d<minD) && d<2)
+							if((l===0 || d<minD) && d<1.5)
 							{
 								minD = d;
 								m.agent = a;
@@ -269,11 +281,9 @@ export default class Crowd
 						if(m.agent!==null)
 						{
 							m.agent.markers.push(m);
-							m.geometry.material.color.setHex(m.agent.geometry.material.color.getHex());
-						//	this.materials[m.id].color.setHex(a.geometry.material.color.getHex());
-							//m.geometry.material.color.setHex(0x999999);
+							if(visualDebug===true)
+								m.geometry.material.color.setHex(m.agent.geometry.material.color.getHex());
 						}
-					//	debugger;
 					}
 				}
 			}
@@ -295,18 +305,15 @@ export default class Crowd
 					continue;
 
 				var n = a.markers.length;
-				// if(n===0)
-				// 	continue;
 
 				a.velocity = THREE.Vector3(0,0,0);
-				if(a.position.distanceTo(a.goal)<0.01) // STOP AGENT ONCE AT THE GOAL
+				if(a.position.distanceTo(a.goal)<0.1) // STOP AGENT ONCE AT THE GOAL
 				{
 					//delete(this.agents[i]);
 					this.scene.remove(a.geometry);
 					this.agents.splice(i, 1);
 					continue;
 				}
-				//a.velocity = THREE.Vector3(0,0,0);
 
 			if(n!==0)
 			{
@@ -321,103 +328,53 @@ export default class Crowd
 				{
 					var m = a.markers[j];
 					var distAM = a.position.distanceTo(m.position); // agent to marker distance
-					var distW = (2 - distAM); // weight.. more dist => less weight
+					if(distAM<0.0)
+						distAM*=1.5;
+					if(distAM<0)
+						distAM-=0.1;
+					else if(distAM>0)
+						distAM+=0.1;
+
+					if(distAM===0)
+						distAM=0.001;
+				//	var distW = (2 - distAM); // weight.. more dist => less weight
 					var dir = new THREE.Vector3(0,0,0);
 					dir.set(m.position.x - a.position.x,
 							m.position.y - a.position.y,
 							m.position.z - a.position.z);
+
 					dir = dir.normalize(); // compute the direction
-					dir.multiplyScalar(distW * (dir.dot(dirAG)) / n); // apply weight based on AM dist, AG dir, num M..
+					var dot = dir.dot(dirAG);
+					if(dot===0)
+						dot=0.001;
+					dir.multiplyScalar(Math.min(Math.max(-1.0, dot / n / distAM), 1.0)); // apply weight based on AM dist, AG dir, num M..
 					vel.add(dir); // add the the velocity
 				}
 
-				a.velocity = vel.divideScalar(10); // TIMESTEP
+				a.velocity = vel.divideScalar(50-speed); // TIMESTEP
 				a.position.add(a.velocity);
 				a.geometry.position.copy(a.position);
 			}
 
-				var x = Math.floor((a.position.x)/2);
-				var z = Math.floor((a.position.z)/2);
+			var x = Math.round(a.position.x);
+			var z = Math.round(a.position.z);
+			x = Math.min(Math.max(0, x), 19); // CLAMP
+			z = Math.min(Math.max(0, z), 19); // CLAMP
 
-				// x = Math.min(Math.max(0, x), 9); // CLAMP
-				// z = Math.min(Math.max(0, z), 9); // CLAMP
+			for(var p=x-1; p<x+2; p++)
+			{
+				for(var q=z-1; q<z+2; q++)
+				{
+					if(p>=0 && q>=0 && p<20 && q<20)
+					{
+						this.cells[p][q].agents.push(a);
+					}
+				}
+			}
 
-				if(x>=0 && x<=9 && z>=0 && z<=9)
-				{
-					this.cells[x][z].agents.push(a);
-				}
-				if(x+1>=0 && x+1<=9 && z+1>=0 && z+1<=9)
-				{
-					this.cells[x+1][z+1].agents.push(a);
-				}
-				if(x+1>=0 && x+1<=9 && z>=0 && z<=9)
-				{
-					this.cells[x+1][z].agents.push(a);
-				}
-				if(x>=0 && x<=9 && z+1>=0 && z+1<=9)
-				{
-					this.cells[x][z+1].agents.push(a);
-				}
 			}
 
 		}
 	}
-	};
-
-
-  // A function to help you debug your turtle functions
-  // by printing out the turtle's current state.
-
-  // Rotate the turtle's _dir_ vector by each of the
-  // Euler angles indicated by the input.
-  // rotateTurtle(x, y, z) {
-  //     var e = new THREE.Euler(
-  //             x * 3.14/180,
-  //     				y * 3.14/180,
-  //     				z * 3.14/180);
-  //     this.state.dir.applyEuler(e);
-  // }
-
-  // Translate the turtle along its _dir_ vector by the distance indicated
-  // moveForward(dist) {
-  //     var newVec = this.state.dir.multiplyScalar(dist);
-  //     this.state.pos.add(newVec);
-  // };
-
-  // Make a cylinder of given length and width starting at turtle pos
-  // Moves turtle pos ahead to end of the new cylinder
-  	makeCylinder(nodeCyl)
-  	{
-		var geometry = new THREE.CylinderGeometry(0.5,0.5,1);
-		var cylinder = new THREE.Mesh(geometry, Material1);
-		cylinder.position.set(nodeCyl.pos.x,nodeCyl.pos.y,nodeCyl.pos.z);
-		cylinder.rotateX(nodeCyl.orient.x);
-		cylinder.rotateY(nodeCyl.orient.y);
-		cylinder.rotateZ(nodeCyl.orient.z);
-		cylinder.scale.set(nodeCyl.scale.x,nodeCyl.scale.y,nodeCyl.scale.z);
-		nodeCyl.type = 'cylinder';
-		nodeCyl.mesh = cylinder;
-		this.scene.add(cylinder);
-  	};
-
-	makeCube(nodeCube)
-	{
-	    var geometry = new THREE.CubeGeometry(1,1,1);
-		var mat = new THREE.MeshLambertMaterial();
-		//mat.copy(Material4);
-	    var cube = new THREE.Mesh(geometry, Material4);
-	    cube.position.set(nodeCube.pos.x,nodeCube.pos.y,nodeCube.pos.z);
-	    cube.rotateX(nodeCube.orient.x);
-	    cube.rotateY(nodeCube.orient.y);
-	    cube.rotateZ(nodeCube.orient.z);
-	    cube.scale.set(nodeCube.scale.x,nodeCube.scale.y,nodeCube.scale.z);
-		// mat.map.wrapS = THREE.RepeatWrapping;
-		// mat.map.wrapT = THREE.RepeatWrapping;
-		// mat.map.repeat.x=nodeCube.scale.x;
-		// mat.map.repeat.y=nodeCube.scale.y;
-	    nodeCube.type = 'cube';
-	    nodeCube.mesh = cube;
-	    this.scene.add(cube);
-	    //console.log(nodeCube);
 	};
 }
